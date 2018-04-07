@@ -1,0 +1,203 @@
+--World state variables--
+VAR Jobqueue
+VAR HasJob
+VAR ThirstLevel
+VAR HungerLevel
+VAR EnergyLevel
+VAR InventoryContains
+VAR InventoryAmount
+VAR InventoryMaxAmount
+VAR IsAtBuilding
+VAR BuildingType
+
+--Goal Priority variable--
+VAR GoalPriorityEatFood
+VAR GoalPriorityDrinkWater
+VAR GoalPriorityGetFood
+VAR GoalPriorityGetWater
+VAR GoalPriorityCompleteJob
+VAR GoalPriorityGetJob
+VAR GoalPriorityGetStone
+VAR GoalPriorityGetWood
+VAR GoalPriorityEmptyInventory
+VAR GoalPriorityPickUpResourceFromBuilding
+VAR GoalPriorityBeAtFarm
+VAR GoalPriorityBeAtWell
+VAR GoalPriorityBeAtHouse
+VAR GoalPriorityBeAtMine
+VAR GoalPriorityBeAtForester
+VAR GoalPriorityBeAtStorehouse
+
+VAR CurrenJob
+VAR ActiveGoal
+LIST VAR PossibleGoals
+LIST VAR Actions
+LIST VAR PossibleActions
+
+FUNCTION UpdateWorldState
+
+	FOR EACH WORLD STATE VARIABLE
+		UPDATE value to current state
+		STORE whether or not it got better or worse
+	END FOR EACH
+END FUNCTION
+
+FUNCTION UpdateGoals
+	FOR EACH GOAL PRIORTY
+		IF relevent world state variable has changed for the better
+			Decrease Goalpriority
+		ELSE IF relevent world state variable has changed for the worse
+			Increase Goalpriority
+		ELSE IF relevent world state variable has not changed
+			Increase Goalpriority slightly
+		END IF`
+	END FOR EACH
+END FUNCTION
+
+FUNCTION FilterImpossibleActions
+	EMPTY PossibleActions
+	FOR EACH ACTION
+	{
+		CHECK action prerequisite
+		IF prerequisite satisfied
+			ADD to PossibleActions
+	}
+}
+
+FUNCTION SelectGoalAndAction
+{
+
+	ADD GOALS to PossibleGoals
+	VAR SelectedAction
+	WHILE SelectedAction IS NULL
+	VAR currentHighest
+	FOR EACH POSSIBLE GOAL
+		IF goal has higher priority than currentHighest
+			currentHighest = goal
+		END IF
+	END FOR EACH
+	
+	FOR EACH POSSIBLE ACTION
+		If Action reduces currentHighest priority
+			SelectedAction becomes Action
+		END IF
+	END FOR EACH
+	IF SelectedAction IS NULL
+		REMOVE currentHighest from PossibleGoals
+	END WHILE
+END FUNCTION
+
+FUNCTION PeformAction
+	RUN Action.Perform
+	Reduce Action.ReleventGoalPriority
+END FUNCTION
+
+FUNCTION MoveTo.Peform (Vector2 Destination)
+	Vetor2.MoveTo(CurrentLocation,Destination)
+END FUNCTION
+
+FUNCTION PickUpResource(ResourceType PassedResource, INT Amount)
+	IF InventoryContains IS PassedResource
+		Return true
+	ELSE IF InventoryContains IS NULL
+		IF IsAtBuilding IS TRUE
+			IF BuildingType IS StoreHouse
+				IF StoreHouse.Inventory CONTAINS PassedResource
+					REMOVE Amount OF PassedResource from StoreHouse.Inventory 
+					InventoryContains = PassedResource
+					ADD Amount of PassedResource to InventoryAmount
+				ELSE 
+					IF PassedResource IS Stone
+						INCREASE GoalPriorityGetStone
+					ELSE IF PassedResource IS Wood
+						INCREASE GoalPriorityGetWood
+					ELSE IF PassedResource IS Water
+						INCREASE GoalPriorityGetWater
+					ELSE IF PassedResource IS Food
+						INCREASE GoalPriorityGetFood
+					END If
+					RETURN False
+				END If
+			ELSE
+				INCREASE GoalPriorityBeAtStorehouse
+				RETURN false
+			END IF`
+		ELSE
+			INCREASE GoalPriorityBeAtStorehouse
+			RETURN false
+		END If
+	ELSE IF InventoryContains IS NOT NULL OR PassedResource
+		INCEASE GoalPriorityEmptyInventory
+		RETURN false
+	END IF
+END FUNCTION
+
+FUNCTION DropOfResource(ResourceType PassedResource, BuildingType Destination)
+	IF InventoryContains IS PassedResource
+		IF IsAtBuilding IS true
+			IF BuildingType IS Destination
+				INCREASE Destination.PassedResource BY InventoryAmount
+				REMOVE InventoryAmount FROM InventoryAmount
+				SET InventoryContains TO Empty
+			ELSE If
+				RETURN False
+			END IF
+		ELSE
+			RETURN False
+		END IF
+	ELSE
+		RETURN false
+	END IF
+END FUNCTION
+
+FUNCTION EatFood
+	IF InventoryContains IS Food
+		REDUCE Hunger BY InventoryAmount
+		SET InventoryAmount TO ZERO
+		SET InventoryContains TO NULL
+		RETURN true
+	ELSE
+		RETURN false
+END FUNCTION
+		
+FUNCTION DrinkWater
+	IF InventoryContains IS Water
+		REDUCE Thirst BY InventoryAmount
+		SET InventoryAmount TO ZERO
+		SET InventoryContains TO NULL
+		RETURN true
+	ELSE
+		RETURN false
+END FUNCTION
+		
+FUNCTION UseBuilding(BuildingType PassedBuilding)
+	IF IsAtBuilding IS true
+		IF BuildingType IS PassedBuilding
+			REDUCE EnergyLevel
+			INCREASE PassedBuilding.Workhours
+			RETURN True
+		ELSE
+			RETURN false
+		END IF`
+	ELSE
+		RETURN False
+	END IF
+END FUNCTION
+
+FUNCTION FindJob
+	IF CurrenJob IS NULL
+		IF Jobqueue IS EMPTY
+			RETURN False
+		ELSE
+			CurrenJob BECOMES Jobqueue.TopJob
+			REMOVE Jobqueue.TopJob
+			RETURN True
+		END IF
+	ELSE
+		RETURN True
+	END If
+END FUNCTION
+		
+		
+		
+		
